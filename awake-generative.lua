@@ -147,7 +147,6 @@ function morphLength()
   print("morphing length")
   -- one_length and two_length are the names of the params
   -- # TODO see if I can get the max value from the param via API
-  -- # TODO change the length of the loops by a small amount, if they are already at or near max or min lengths then weight accordingly
   local maxLen = 16
   local minLen = 1
   local morph1 = math.random(-3, 3)
@@ -167,9 +166,28 @@ function morphLength()
 
 end
 
-function scalemorph()
+function morphScale()
   print("morphing scale")
+  -- # TODO here also see if I can get the max value from the param via API
   -- # TODO move root note up or down 7 semitones, if we are in the top or bottom octave, make a move back toward the center more likely
+  local min = 0
+  local max = 127
+  local root = params:get("root_note")
+  if root < 7
+  then
+    params:delta("root_note", 7)
+  elseif root > 120
+  then
+    params:delta("root_note", -7)
+  else
+    local flip = math.random(-1,1)
+    if flip > 0
+    then
+      params:delta("root_note", 7)
+    else
+      params:delta("root_note", -7)
+    end
+  end
 end
 
 function step()
@@ -190,7 +208,7 @@ function step()
     -- Cruise around the circle of fifths every scalemorph steps
     if scalemorph > 0 and stepCounter % scalemorph == 0
     then
-      scalemorph()
+      morphScale()
     end
     
     one.pos = one.pos + 1
@@ -311,10 +329,10 @@ function init()
   params:add{type="control",id="pan",controlspec=cs_PAN,
     action=function(x) engine.pan(x) end}
 
-  cs_LENMORPH = controlspec.new(0,512, 'lin',24,0,'')
+  cs_LENMORPH = controlspec.new(0,512, 'lin',1,0,'')
   params:add{type="control",id="lenmorph",controlspec=cs_LENMORPH}
 
-  cs_SCALEMORPH = controlspec.new(0,2048, 'lin',0,0,'')
+  cs_SCALEMORPH = controlspec.new(0,2048, 'lin',1,0,'')
   params:add{type="control",id="scalemorph",controlspec=cs_SCALEMORPH}
 
   hs.init()
@@ -567,6 +585,12 @@ function redraw()
     screen.level(15)
     screen.move(0,40)
     screen.text(params:get("lenmorph"))
+    screen.level(1)
+    screen.move(0,50)
+    screen.text("MorphScale")
+    screen.level(15)
+    screen.move(0,60)
+    screen.text(params:get("scalemorph"))
   end
 
 
