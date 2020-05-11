@@ -1,5 +1,6 @@
--- awake: time changes
+-- awake-generative: time changes
 -- 2.4.0 @tehn
+-- modified by @thedaniel
 -- llllllll.co/t/21022
 --
 -- top loop plays notes
@@ -32,6 +33,8 @@
 
 engine.name = 'PolyPerc'
 
+-- # TODO: figure out how to connect encs to params to the LFO i added to the engine
+
 hs = include('lib/halfsecond')
 
 MusicUtil = require "musicutil"
@@ -44,7 +47,7 @@ g = grid.connect()
 alt = false
 
 mode = 1
-mode_names = {"STEP","LOOP","SOUND","OPTION"}
+mode_names = {"STEP","LOOP","SOUND","OPTION", "RAND"}
 
 one = {
   pos = 0,
@@ -58,32 +61,34 @@ two = {
   data = {5,7,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
 }
 
-function add_pattern_params() 
+stepCounter = 0
+
+function add_pattern_params()
   params:add_separator()
   params:add_group("pattern 1",17)
-  
-  params:add{type = "number", id = "one_length", name = "length", min=1, max=16, 
+
+  params:add{type = "number", id = "one_length", name = "length", min=1, max=16,
     default = one.length,
     action=function(x) one.length = x end }
 
   for i=1,16 do
-    params:add{type = "number", id= ("one_data_"..i), name = ("data "..i), min=0, max=8, 
+    params:add{type = "number", id= ("one_data_"..i), name = ("data "..i), min=0, max=8,
       default = one.data[i],
       action=function(x)one.data[i] = x end }
   end
-  
+
   params:add_group("pattern 2",17)
-  
-  params:add{type = "number", id = "two_length", name = "length",  min=1, max=16, 
+
+  params:add{type = "number", id = "two_length", name = "length",  min=1, max=16,
     default = two.length,
     action=function(x)two.length = x end}
-  
+
   for i=1,16 do
-    params:add{type = "number", id= "two_data_"..i, name = "data "..i,  min=0, max=8, 
+    params:add{type = "number", id= "two_data_"..i, name = "data "..i,  min=0, max=8,
       default = two.data[i],
       action=function(x) two.data[i] = x end }
   end
-  
+
 end
 
 set_loop_data = function(which, step, val)
@@ -143,7 +148,21 @@ function step()
     clock.sync(1/params:get("step_div"))
 
     all_notes_off()
+    stepCounter = stepCounter + 1
+    local lenmorph = params:get("lenmorph")
+    local scalemorph = params:get("scalemorph")
+    if lenmorph > 0 then print("stepcounter % lenmorph",stepCounter, "%", lenmorph, stepCounter % lenmorph) end
 
+    -- Slightly adjust the loop lengths every lenmorph steps
+    if lenmorph > 0 and stepCounter % lenmorph == 0
+    then
+    end
+
+    -- Cruise around the circle of fifths every scalemorph steps
+    if lenmorph > 0 and stepCounter % lenmorph == 0
+    then
+    end
+    
     one.pos = one.pos + 1
     if one.pos > one.length then one.pos = 1 end
     two.pos = two.pos + 1
@@ -169,7 +188,7 @@ function step()
           midi_out_device:note_on(note_num, 96, midi_out_channel)
           table.insert(active_notes, note_num)
 
-          --local note_off_time = 
+          --local note_off_time =
           -- Note off timeout
           if params:get("note_length") < 4 then
             notes_off_metro:start((60 / params:get("clock_tempo") / params:get("step_div")) * params:get("note_length"), 1)
@@ -194,12 +213,12 @@ function init()
   for i = 1, #MusicUtil.SCALES do
     table.insert(scale_names, string.lower(MusicUtil.SCALES[i].name))
   end
-  
+
   midi_out_device = midi.connect(1)
   midi_out_device.event = function() end
-  
+
   notes_off_metro.event = all_notes_off
-  
+
   params:add{type = "option", id = "output", name = "output",
     options = options.OUTPUT,
     action = function(value)
@@ -212,7 +231,7 @@ function init()
     end}
   params:add{type = "number", id = "midi_out_device", name = "midi out device",
     min = 1, max = 4, default = 1,
-    
+
     action = function(value) midi_out_device = midi.connect(value) end}
   params:add{type = "number", id = "midi_out_channel", name = "midi out channel",
     min = 1, max = 16, default = 1,
@@ -221,13 +240,13 @@ function init()
       midi_out_channel = value
     end}
   params:add_separator()
-  
+
   params:add{type = "number", id = "step_div", name = "step division", default = 4}
 
   params:add{type = "option", id = "note_length", name = "note length",
     options = {"25%", "50%", "75%", "100%"},
     default = 4}
-  
+
   params:add{type = "option", id = "scale_mode", name = "scale mode",
     options = scale_names, default = 5,
     action = function() build_scale() end}
@@ -257,13 +276,19 @@ function init()
   cs_GAIN = controlspec.new(0,4,'lin',0,1,'')
   params:add{type="control",id="gain",controlspec=cs_GAIN,
     action=function(x) engine.gain(x) end}
-  
+
   cs_PAN = controlspec.new(-1,1, 'lin',0,0,'')
   params:add{type="control",id="pan",controlspec=cs_PAN,
     action=function(x) engine.pan(x) end}
 
+  cs_LENMORPH = controlspec.new(0,512, 'lin',24,0,'')
+  params:add{type="control",id="lenmorph",controlspec=cs_LENMORPH}
+
+  cs_SCALEMORPH = controlspec.new(0,2048, 'lin',0,0,'')
+  params:add{type="control",id="scalemorph",controlspec=cs_SCALEMORPH}
+
   hs.init()
-  
+
   add_pattern_params()
   params:default()
 
@@ -325,7 +350,7 @@ end
 
 function enc(n, delta)
   if n==1 then
-    mode = util.clamp(mode+delta,1,4)
+    mode = util.clamp(mode+delta,1,5)
   elseif mode == 1 then --step
     if n==2 then
       if alt then
@@ -366,6 +391,12 @@ function enc(n, delta)
       else
         params:delta("scale_mode", delta)
       end
+    end
+  elseif mode == 5 then --RAND
+    if n==2 then
+      params:delta("lenmorph", delta)
+    elseif n==3 then
+      params:delta("scalemorph", delta)
     end
   end
   redraw()
@@ -417,6 +448,10 @@ function key(n,z)
       snd_sel = util.clamp(snd_sel + 2,1,NUM_SND_PARAMS-1)
     end
   elseif mode == 4 then --option
+    if n==2 then
+    elseif n==3 then
+    end
+  elseif mode ==4 then --RAND
     if n==2 then
     elseif n==3 then
     end
@@ -488,13 +523,32 @@ function redraw()
     screen.text(alt==false and "bpm" or "div")
     screen.level(15)
     screen.move(0,40)
-    screen.text(alt==false and params:get("clock_tempo") or params:string("step_div")) 
+    screen.text(alt==false and params:get("clock_tempo") or params:string("step_div"))
     screen.level(1)
     screen.move(0,50)
     screen.text(alt==false and "root" or "scale")
     screen.level(15)
     screen.move(0,60)
     screen.text(alt==false and params:string("root_note") or params:string("scale_mode"))
+  elseif mode==5 then
+    screen.level(1)
+    screen.move(0,30)
+    screen.text("MorphLen")
+    screen.level(15)
+    screen.move(0,40)
+    screen.text("")
+    screen.move(0,50)
+    screen.text("Morph")
+    screen.level(15)
+    screen.text("")
+    screen.text("Inc length 1 every")
+    screen.level(15)
+    screen.move(0,60)
+    screen.text("")
+    screen.text("Inc length 2 every")
+    screen.level(15)
+    screen.move(0,70)
+    screen.text("")
   end
 
 
