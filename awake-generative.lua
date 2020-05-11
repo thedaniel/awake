@@ -143,6 +143,35 @@ function random()
   for i=1,two.length do set_loop_data("two", i, math.floor(math.random()*9)) end
 end
 
+function morphLength()
+  print("morphing length")
+  -- one_length and two_length are the names of the params
+  -- # TODO see if I can get the max value from the param via API
+  -- # TODO change the length of the loops by a small amount, if they are already at or near max or min lengths then weight accordingly
+  local maxLen = 16
+  local minLen = 1
+  local morph1 = math.random(-3, 3)
+  local morph2 = math.random(-3, 3)
+  local len1 = params:get("one_length")
+  local len2 = params:get("two_length")
+
+  if len1 + morph1 > minLen and len1 + morph1 < maxLen
+  then
+    params:delta("one_length", morph1)
+  end
+
+  if len2 + morph2 > minLen and len2 + morph2 < maxLen
+  then
+    params:delta("two_length", morph2)
+  end
+
+end
+
+function scalemorph()
+  print("morphing scale")
+  -- # TODO move root note up or down 7 semitones, if we are in the top or bottom octave, make a move back toward the center more likely
+end
+
 function step()
   while true do
     clock.sync(1/params:get("step_div"))
@@ -151,16 +180,17 @@ function step()
     stepCounter = stepCounter + 1
     local lenmorph = params:get("lenmorph")
     local scalemorph = params:get("scalemorph")
-    if lenmorph > 0 then print("stepcounter % lenmorph",stepCounter, "%", lenmorph, stepCounter % lenmorph) end
 
     -- Slightly adjust the loop lengths every lenmorph steps
     if lenmorph > 0 and stepCounter % lenmorph == 0
     then
+      morphLength()
     end
 
     -- Cruise around the circle of fifths every scalemorph steps
-    if lenmorph > 0 and stepCounter % lenmorph == 0
+    if scalemorph > 0 and stepCounter % scalemorph == 0
     then
+      scalemorph()
     end
     
     one.pos = one.pos + 1
@@ -536,19 +566,7 @@ function redraw()
     screen.text("MorphLen")
     screen.level(15)
     screen.move(0,40)
-    screen.text("")
-    screen.move(0,50)
-    screen.text("Morph")
-    screen.level(15)
-    screen.text("")
-    screen.text("Inc length 1 every")
-    screen.level(15)
-    screen.move(0,60)
-    screen.text("")
-    screen.text("Inc length 2 every")
-    screen.level(15)
-    screen.move(0,70)
-    screen.text("")
+    screen.text(params:get("lenmorph"))
   end
 
 
